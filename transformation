@@ -1,0 +1,77 @@
+import pandas as pd
+import boto3
+from io import StringIO
+from datetime import date
+ 
+# ── Config ──────────────────────────────────────────────
+S3_BUCKET = "yourname-cis4400"   # <-- replace with your S3 bucket name
+TODAY = date.today().isoformat()
+RAW_KEY = f"raw/{TODAY}/plan_review_raw.csv"
+TRANSFORMED_KEY = "transformed/plan_review_clean.csv"
+# ────────────────────────────────────────────────────────
+ 
+# Load raw data from S3
+print("Loading raw data from S3...")
+s3 = boto3.client("s3")
+obj = s3.get_object(Bucket=S3_BUCKET, Key=RAW_KEY)
+df = pd.read_csv(obj["Body"], low_memory=False)
+print(f"Loaded {len(df)} rows")
+ 
+# 1. Standardize column names
+df.columns = [c.strip().lower() for c in df.columns]
+ 
+# 2. Parse date columns to YYYY-MM-DD
+date_cols = ["applied_date", "issued_date", "expires_date", "status_date", "final_date"]
+for col in date_cols:
+    if col in df.columns:
+        df[col] = pd.to_datetime(df[col], errors="coerce").dt.strftime("%Y-%m-%d")
+ 
+# 3. Split applied_date into parts
+df["applied_dt"] = pd.to_datetime(df["applied_date"], errors="coerce")
+df["applied_year"]    = df["applied_dt"].dt.year
+df["applied_quarter"] = df["applied_dt"].dt.quarter
+df["applied_month"]   = df["applied_dt"].dt.month
+df["applied_day"]     = df["applied_dt"].dt.day
+df.drop(columns=["applied_dt"], inplace=True)
+ 
+# 4. Remove duplicates on permit number
+before = len(df)
+df.drop_duplicates(subset=["permit_number"], inplace=True)
+print(f"Removed {before - len(df)} duplicate rows")
+ 
+# 5. Drop rows missing critical fields
+df.dropna(subset=["permit_number", "case_type"], inplace=True)
+ 
+# 6. Fix numeric types
+num_cols = [
+    "total_job_valuation", "building_valuation", "electrical_valuation",
+    "mechanical_valuation", "plumbing_valuation", "medgas_valuation",
+    "number_of_units", "number_of_floors", "total_valuation_remodel"
+]
+for col in num_cols:
+    if col in df.columns:
+        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+ 
+# 7. Validate council_district (Austin districts 1-10)
+df["valid_district"] = df["council_district"].between(1, 10)
+ 
+# 8. Extract lat/lon from WKT POINT geometry
+df["longitude"] = df["location"].str.extract(r"POINT \((-?\d+\.\d+)")
+df["latitude"]  = df["location"].str.extract(r"POINT \(-?\d+\.\d+ (\d+\.\d+)\)")
+ 
+# 9. Add ingestion date
+df["ingestion_date"] = TODAY
+ 
+print(f"Transformed shape: {df.shape}")
+ 
+# Save locally
+df.to_csv(f"plan_review_transformed_{TODAY}.csv", index=False)
+print(f"Saved locally: plan_review_transformed_{TODAY}.csv")
+ 
+# Upload to S3
+buf = StringIO()
+df.to_csv(buf, index=False)
+s3.put_object(Bucket=S3_BUCKET, Key=TRANSFORMED_KEY, Body=buf.getvalue())
+print(f"Uploaded to s3://{S3_BUCKET}/{TRANSFORMED_KEY}")
+print("Transformation complete.")
+ 

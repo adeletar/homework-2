@@ -1,1 +1,28 @@
+"""
+sourcing.py - Phase 1: Data Sourcing
+Pulls Austin Plan Review Cases from the City of Austin Open Data Portal (Socrata API)
+and saves it as a local CSV with today's date.
+"""
 
+import requests
+import pandas as pd
+from datetime import date
+
+# Austin Open Data API endpoint for Plan Review Cases
+URL = "https://data.austintexas.gov/resource/6s5u-ims4.json"
+
+params = {"$limit": 200000, "$offset": 0}
+
+print("Fetching data from Austin Open Data Portal...")
+response = requests.get(URL, params=params)
+response.raise_for_status()
+
+df = pd.DataFrame(response.json())
+print(f"Records fetched: {len(df)}")
+print(f"Columns: {df.columns.tolist()}")
+
+# Save locally with ingestion date
+today = date.today().isoformat()
+output_file = f"plan_review_raw_{today}.csv"
+df.to_csv(output_file, index=False)
+print(f"Saved to {output_file}")

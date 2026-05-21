@@ -1,0 +1,117 @@
+api.py - Phase 5 (Optional): Data API
+Endpoints:
+  GET /summary              - Summary by council district and work class
+  GET /summary/district     - Summary by council district only
+  GET /summary/workclass    - Summary by work class only
+  GET /summary/monthly      - Monthly permit counts
+ 
+Usage:
+  pip install flask pandas
+  python api.py
+  Then visit http://localhost:5000/summary in your browser to download the CSV
+"""
+ 
+from flask import Flask, Response
+import pandas as pd
+from datetime import date
+ 
+app = Flask(__name__)
+ 
+# Load data once when the app starts
+print("Loading data...")
+df = pd.read_csv("plan_review_transformed.csv", low_memory=False)
+print(f"Loaded {len(df)} records")
+ 
+@app.route("/")
+def index():
+    return """
+    <h2>Austin Plan Review Cases API</h2>
+    <p>Available endpoints:</p>
+    <ul>
+        <li><a href="/summary">/summary</a> - Full summary by district and work class</li>
+        <li><a href="/summary/district">/summary/district</a> - Summary by council district</li>
+        <li><a href="/summary/workclass">/summary/workclass</a> - Summary by work class</li>
+        <li><a href="/summary/monthly">/summary/monthly</a> - Monthly permit counts</li>
+    </ul>
+    """
+ 
+@app.route("/summary")
+def summary():
+    result = df.groupby(["council_district", "work_class"]).agg(
+        total_permits=("permit_number", "count"),
+        total_job_valuation=("total_job_valuation", "sum"),
+        avg_job_valuation=("total_job_valuation", "mean"),
+        total_units=("number_of_units", "sum")
+    ).reset_index()
+ 
+    result["total_job_valuation"] = result["total_job_valuation"].round(2)
+    result["avg_job_valuation"]   = result["avg_job_valuation"].round(2)
+ 
+    csv_data = result.to_csv(index=False)
+    filename = f"plan_review_summary_{date.today().isoformat()}.csv"
+    return Response(
+        csv_data,
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+ 
+@app.route("/summary/district")
+def summary_by_district():
+    result = df.groupby("council_district").agg(
+        total_permits=("permit_number", "count"),
+        total_job_valuation=("total_job_valuation", "sum"),
+        avg_job_valuation=("total_job_valuation", "mean"),
+        total_units=("number_of_units", "sum")
+    ).reset_index()
+ 
+    result["total_job_valuation"] = result["total_job_valuation"].round(2)
+    result["avg_job_valuation"]   = result["avg_job_valuation"].round(2)
+ 
+    csv_data = result.to_csv(index=False)
+    filename = f"plan_review_by_district_{date.today().isoformat()}.csv"
+    return Response(
+        csv_data,
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+ 
+@app.route("/summary/workclass")
+def summary_by_workclass():
+    result = df.groupby("work_class").agg(
+        total_permits=("permit_number", "count"),
+        total_job_valuation=("total_job_valuation", "sum"),
+        avg_job_valuation=("total_job_valuation", "mean"),
+    ).reset_index()
+ 
+    result["total_job_valuation"] = result["total_job_valuation"].round(2)
+    result["avg_job_valuation"]   = result["avg_job_valuation"].round(2)
+ 
+    csv_data = result.to_csv(index=False)
+    filename = f"plan_review_by_workclass_{date.today().isoformat()}.csv"
+    return Response(
+        csv_data,
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+ 
+@app.route("/summary/monthly")
+def summary_monthly():
+    df["applied_date"] = pd.to_datetime(df["applied_date"], errors="coerce")
+    result = df.groupby(["applied_year", "applied_month"]).agg(
+        total_permits=("permit_number", "count"),
+        total_job_valuation=("total_job_valuation", "sum"),
+    ).reset_index()
+ 
+    result["total_job_valuation"] = result["total_job_valuation"].round(2)
+    result = result.sort_values(["applied_year", "applied_month"])
+ 
+    csv_data = result.to_csv(index=False)
+    filename = f"plan_review_monthly_{date.today().isoformat()}.csv"
+    return Response(
+        csv_data,
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+ 
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)

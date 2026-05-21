@@ -1,0 +1,54 @@
+# Data Dictionary — Austin Plan Review Cases
+
+**Source:** City of Austin Open Data Portal  
+**Dataset:** Plan Review Cases  
+**Last Updated:** April 14, 2026  
+**Records:** ~178,750 raw / ~156,660 after deduplication  
+
+---
+
+## Raw Fields
+
+| Field | Description | Data Type | Constraints |
+|---|---|---|---|
+| Case_Type | Type of case (e.g. "Plan Review") | String | Not null |
+| Folder_Type | Folder code (e.g. "PR") | String | |
+| Sub_Type | Sub-category of permit work | String | |
+| Work_Class | Class of work: New, Remodel, Repair | String | |
+| Permit_Number | Unique permit identifier | String | Not null, unique |
+| Project_Name | Name or address of the project | String | |
+| Folder_Description | Free-text description of the work | String | |
+| Status_Current | Current permit status (Expired, Issued, etc.) | String | |
+| Status_Date | Date of last status change | DateTime | |
+| Applied_Date | Date the application was submitted | DateTime | |
+| Issued_Date | Date the permit was issued | DateTime | |
+| Expires_Date | Date the permit expires | DateTime | |
+| Final_Date | Date of final inspection | DateTime | |
+| Building_Valuation | Dollar value of building work | Float | >= 0 |
+| Electrical_Valuation | Dollar value of electrical work | Float | >= 0 |
+| Mechanical_Valuation | Dollar value of mechanical work | Float | >= 0 |
+| Plumbing_Valuation | Dollar value of plumbing work | Float | >= 0 |
+| Total_Job_Valuation | Total dollar value of the job | Float | >= 0 |
+| Number_Of_Units | Number of units in the project | Float | >= 0 |
+| Number_Of_Floors | Number of floors in the structure | Float | >= 0 |
+| Council_District | Austin city council district | Integer | 1–10 |
+| Condominium | Whether property is a condo | String | Yes / No |
+| Appraisal_Id | County appraisal district ID | String | |
+| Legal_Description | Legal property description | String | |
+| Location | GPS coordinates in WKT format | String | POINT (lon lat) |
+| Update_Date | Timestamp of last record update | DateTime | ISO 8601 |
+
+---
+
+## Derived Fields (added during transformation)
+
+| Field | Description | Data Type | Source |
+|---|---|---|---|
+| applied_year | Year of application | Integer | Extracted from Applied_Date |
+| applied_quarter | Quarter of application (1–4) | Integer | Extracted from Applied_Date |
+| applied_month | Month of application (1–12) | Integer | Extracted from Applied_Date |
+| applied_day | Day of application (1–31) | Integer | Extracted from Applied_Date |
+| latitude | GPS latitude of property | Float | Extracted from Location |
+| longitude | GPS longitude of property | Float | Extracted from Location |
+| valid_district | Whether district is valid (1–10) | Boolean | Validated from Council_District |
+| ingestion_date | Date data was pulled | Date | Added at ingestion |

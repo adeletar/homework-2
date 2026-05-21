@@ -1,0 +1,41 @@
+# Data Mapping — Austin Plan Review Cases
+
+**Source System:** City of Austin Open Data Portal (Socrata API)  
+**Destination:** AWS S3 → Transformed CSV → SQLite / AWS Redshift  
+
+---
+
+## Field Mapping
+
+| Source Column | Destination Column | Source Type | Destination Type | Transformation Rule |
+|---|---|---|---|---|
+| Case_Type | case_type | String | VARCHAR(100) | Lowercase column name only |
+| Folder_Type | folder_type | String | VARCHAR(50) | Lowercase column name only |
+| Sub_Type | sub_type | String | VARCHAR(200) | Lowercase column name only |
+| Work_Class | work_class | String | VARCHAR(100) | Lowercase column name only |
+| Permit_Number | permit_number | String | VARCHAR(100) | Deduplicated; nulls dropped |
+| Status_Current | status_current | String | VARCHAR(100) | Lowercase column name only |
+| Applied_Date | applied_date | String | DATE | Parsed to YYYY-MM-DD |
+| Applied_Date | applied_year | String | INT | Extract year from Applied_Date |
+| Applied_Date | applied_quarter | String | INT | Extract quarter (1–4) from Applied_Date |
+| Applied_Date | applied_month | String | INT | Extract month (1–12) from Applied_Date |
+| Applied_Date | applied_day | String | INT | Extract day (1–31) from Applied_Date |
+| Issued_Date | issued_date | String | DATE | Parsed to YYYY-MM-DD |
+| Expires_Date | expires_date | String | DATE | Parsed to YYYY-MM-DD |
+| Status_Date | status_date | String | DATE | Parsed to YYYY-MM-DD |
+| Final_Date | final_date | String | DATE | Parsed to YYYY-MM-DD |
+| Total_Job_Valuation | total_job_valuation | String | FLOAT | Cast to numeric; nulls → 0 |
+| Building_Valuation | building_valuation | String | FLOAT | Cast to numeric; nulls → 0 |
+| Electrical_Valuation | electrical_valuation | String | FLOAT | Cast to numeric; nulls → 0 |
+| Mechanical_Valuation | mechanical_valuation | String | FLOAT | Cast to numeric; nulls → 0 |
+| Plumbing_Valuation | plumbing_valuation | String | FLOAT | Cast to numeric; nulls → 0 |
+| Number_Of_Units | number_of_units | String | FLOAT | Cast to numeric; nulls → 0 |
+| Number_Of_Floors | number_of_floors | String | FLOAT | Cast to numeric; nulls → 0 |
+| Council_District | council_district | Integer | INT | Unchanged |
+| Council_District | valid_district | Integer | BOOLEAN | True if value between 1 and 10 |
+| Location | longitude | String | FLOAT | Extracted from WKT: POINT (lon lat) |
+| Location | latitude | String | FLOAT | Extracted from WKT: POINT (lon lat) |
+| Condominium | condominium | String | VARCHAR(10) | Unchanged |
+| Appraisal_Id | appraisal_id | Integer | VARCHAR(50) | Unchanged |
+| Legal_Description | legal_description | String | VARCHAR(500) | Unchanged |
+| — | ingestion_date | — | DATE | Added at ingestion: today's date |

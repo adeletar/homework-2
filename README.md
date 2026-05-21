@@ -1,3 +1,6 @@
 # homework-2
 https://public.tableau.com/app/profile/adeleta.radoncic/viz/Homework2_17793261919270/Dashboard1?publish=yes
-
+/notes - my main focus from the data when creating the visuals was to use tags from the data necessary to further break it down and actually understand each vlaue. For the pie chart i used he 'work_class' which separated the data based off of the permit type, whether it was a new permit, model permit or repair permit. This combined with the permit count allowed me to see how much of each permit is actually being distrubeted and in turn find out what it is used for. 
+// notes - the tags for the column chart were council district and total job valuation. Using these two tags presented me with a cloumn chart which ranks the districts based off of the total cost of a project or deliverable is. 
+//notes- the line chart specifically combined with the date filter allows me to see how often permits are being applied for and after toggling with the filter and setting its date range from 5/28/25-4/14/26 it shows in that range the peak of permit applications was in March. 
+// Using council district, total job valuations and work class allowed me to produce a heat map which cross references the council districts and work classes specifically highlighting the more costly projects going on. 

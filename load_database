@@ -1,0 +1,81 @@
+"""
+load_database.py - Phase 4: Modeling & Loading
+Reads the transformed CSV and builds a star schema in a local SQLite database.
+
+Star Schema:
+  fact_plan_review  (center)
+  dim_date          (when was the permit applied)
+  dim_location      (where is the property)
+  dim_permit_type   (what type of work)
+"""
+
+import pandas as pd
+import sqlite3
+from datetime import date
+
+# ── Config ──────────────────────────────────────────────
+TODAY = date.today().isoformat()
+INPUT_CSV = f"plan_review_transformed_{TODAY}.csv"
+DB_FILE = "plan_review.db"
+# ────────────────────────────────────────────────────────
+
+print(f"Loading {INPUT_CSV}...")
+df = pd.read_csv(INPUT_CSV, low_memory=False)
+print(f"Rows loaded: {len(df)}")
+
+conn = sqlite3.connect(DB_FILE)
+
+# ── dim_date ─────────────────────────────────────────────
+dim_date = (
+    df[["applied_date", "applied_year", "applied_quarter", "applied_month", "applied_day"]]
+    .dropna(subset=["applied_date"])
+    .drop_duplicates(subset=["applied_date"])
+    .reset_index(drop=True)
+)
+dim_date.insert(0, "date_id", dim_date.index + 1)
+dim_date.columns = ["date_id", "full_date", "year", "quarter", "month", "day"]
+dim_date.to_sql("dim_date", conn, if_exists="replace", index=False)
+print(f"dim_date: {len(dim_date)} rows")
+
+# ── dim_location ──────────────────────────────────────────
+dim_location = (
+    df[["council_district", "legal_description", "latitude", "longitude", "appraisal_id"]]
+    .drop_duplicates()
+    .reset_index(drop=True)
+)
+dim_location.insert(0, "location_id", dim_location.index + 1)
+dim_location.to_sql("dim_location", conn, if_exists="replace", index=False)
+print(f"dim_location: {len(dim_location)} rows")
+
+# ── dim_permit_type ───────────────────────────────────────
+dim_permit_type = (
+    df[["case_type", "folder_type", "sub_type", "work_class"]]
+    .drop_duplicates()
+    .reset_index(drop=True)
+)
+dim_permit_type.insert(0, "permit_type_id", dim_permit_type.index + 1)
+dim_permit_type.to_sql("dim_permit_type", conn, if_exists="replace", index=False)
+print(f"dim_permit_type: {len(dim_permit_type)} rows")
+
+# ── fact_plan_review ──────────────────────────────────────
+fact = df.merge(
+    dim_date.rename(columns={"full_date": "applied_date"})[["date_id", "applied_date"]],
+    on="applied_date", how="left"
+).merge(
+    dim_permit_type, on=["case_type", "folder_type", "sub_type", "work_class"], how="left"
+).merge(
+    dim_location, on=["council_district", "legal_description", "latitude", "longitude", "appraisal_id"], how="left"
+)
+
+fact_cols = [
+    "permit_number", "permit_type_id", "location_id", "date_id",
+    "status_current", "total_job_valuation", "building_valuation",
+    "electrical_valuation", "mechanical_valuation", "plumbing_valuation",
+    "number_of_units", "number_of_floors", "condominium", "ingestion_date"
+]
+fact[fact_cols].to_sql("fact_plan_review", conn, if_exists="replace", index=False)
+print(f"fact_plan_review: {len(fact)} rows")
+
+conn.close()
+print(f"\nDatabase saved to {DB_FILE}")
+print("Star schema complete.")
